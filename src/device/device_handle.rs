@@ -16,6 +16,7 @@ use nusb::{Device, Endpoint, Interface, MaybeFuture};
 
 type UsbStrings = (Option<String>, Option<String>, Option<String>);
 
+#[cfg_attr(target_os = "android", allow(dead_code))]
 enum UsbSelector<'a> {
     Index(usize),
     Serial(&'a str),
@@ -44,6 +45,13 @@ impl DeviceHandle {
         })
     }
 
+    #[cfg(target_os = "android")]
+    fn open_from_usb(_selector: UsbSelector) -> Result<(Device, UsbStrings)> {
+        let msg = "USB enumeration is unsupported on Android; open the device by file descriptor";
+        Err(RtlsdrErr(msg.to_string()))
+    }
+
+    #[cfg(not(target_os = "android"))]
     fn open_from_usb(selector: UsbSelector) -> Result<(Device, UsbStrings)> {
         let devices = nusb::list_devices().wait().map_err(|e| {
             info!("Failed to get devices: {:?}", e);
@@ -257,6 +265,7 @@ impl DeviceHandle {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 fn device_strings(device: &nusb::DeviceInfo) -> UsbStrings {
     (
         device.manufacturer_string().map(str::to_string),

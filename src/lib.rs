@@ -16,7 +16,6 @@ pub use async_read::{
 };
 use device::Device;
 use error::{Result, RtlsdrError};
-use nusb::MaybeFuture;
 use rtlsdr::RtlSdr as Sdr;
 use tuners::r82xx::{R820T_TUNER_ID, R828D_TUNER_ID};
 
@@ -44,12 +43,21 @@ pub struct DeviceDescriptor {
 }
 
 impl DeviceDescriptors {
+    #[cfg(not(target_os = "android"))]
     pub fn new() -> Result<Self> {
+        use nusb::MaybeFuture;
+
         let list = nusb::list_devices()
             .wait()
             .map_err(RtlsdrError::from_usb)?
             .collect();
         Ok(Self { list })
+    }
+
+    #[cfg(target_os = "android")]
+    pub fn new() -> Result<Self> {
+        let msg = "USB enumeration is unsupported on Android; open the device by file descriptor";
+        Err(RtlsdrError::RtlsdrErr(msg.to_string()))
     }
 
     /// Returns an iterator over the found RTL-SDR devices.
